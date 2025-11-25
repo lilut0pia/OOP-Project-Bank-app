@@ -1,0 +1,289 @@
+@startuml ClassDiagram_BankApp
+!define INTERFACE_BG #FFFFCC
+!define ABSTRACT_BG #D3D3D3
+!define CONCRETE_BG #E8F4F8
+
+skinparam backgroundColor #FFFFFF
+skinparam ClassBackgroundColor<<Interface>> INTERFACE_BG
+skinparam ClassBackgroundColor<<Abstract>> ABSTRACT_BG
+skinparam ClassBackgroundColor<<Concrete>> CONCRETE_BG
+
+package "model" {
+    abstract class Account <<Abstract>> {
+        #accountNumber: String
+        #balance: double
+        #createdAt: long
+        #transactions: List<Transaction>
+        #isActive: boolean
+        __
+        +Account(accountNumber, initialBalance)
+        {abstract}+getAccountType(): String
+        {abstract}+canWithdraw(amount): boolean
+        {abstract}+applyAccountSpecificRules(): void
+        +deposit(amount, description): boolean
+        +withdraw(amount, description): boolean
+        +transfer(amount, toAccountNumber): boolean
+        +receiveTransfer(amount, fromAccountNumber): void
+        +closeAccount(): void
+        +getRecentTransactions(count): List<Transaction>
+    }
+
+    class CheckingAccount {
+        -overdraftLimit: double
+        -monthlyWithdrawals: int
+        __
+        +CheckingAccount(accountNumber, initialBalance)
+        +CheckingAccount(accountNumber, initialBalance, overdraftLimit)
+        +getAccountType(): String
+        +canWithdraw(amount): boolean
+        +applyAccountSpecificRules(): void
+        +resetMonthlyWithdrawals(): void
+    }
+
+    class SavingsAccount {
+        -interestRate: double
+        -withdrawalsThisMonth: int
+        -withdrawalPenalty: double
+        __
+        +SavingsAccount(accountNumber, initialBalance)
+        +SavingsAccount(accountNumber, initialBalance, interestRate)
+        +getAccountType(): String
+        +canWithdraw(amount): boolean
+        +applyAccountSpecificRules(): void
+        +applyMonthlyInterest(): double
+        +resetMonthlyWithdrawals(): void
+        +getProjectedAnnualInterest(): double
+    }
+
+    class User {
+        -userId: String
+        -username: String
+        -passwordHash: String
+        -fullName: String
+        -email: String
+        -accounts: List<Account>
+        -createdAt: long
+        __
+        +User(userId, username, passwordHash, fullName, email)
+        +addAccount(account): boolean
+        +getAccountByNumber(accountNumber): Account
+        +getCheckingAccounts(): List<Account>
+        +getSavingsAccounts(): List<Account>
+        +getTotalBalance(): double
+    }
+
+    class Transaction {
+        -transactionId: String
+        -fromAccountNumber: String
+        -toAccountNumber: String
+        -amount: double
+        -type: String
+        -description: String
+        -timestamp: long
+        -status: String
+        __
+        +Transaction(transactionId, fromAccountNumber, toAccountNumber, ...)
+        +getFormattedDate(): String
+        +getFormattedDetails(): String
+    }
+
+    Account "1" *-- "many" Transaction
+    User "1" *-- "many" Account
+}
+
+package "services" {
+    class AuthService {
+        -userRepository: UserRepository
+        __
+        +AuthService()
+        +register(username, password, fullName, email): User
+        +login(username, password): User
+        +getUserById(userId): User
+        +getUserByUsername(username): User
+    }
+
+    class AccountService {
+        -accountRepository: AccountRepository
+        __
+        +AccountService()
+        +createCheckingAccount(user, initialBalance, overdraftLimit): CheckingAccount
+        +createSavingsAccount(user, initialBalance, interestRate): SavingsAccount
+        +getAccount(accountNumber): Account
+        +closeAccount(accountNumber): boolean
+        +accountExists(accountNumber): boolean
+        +getAccountBalance(accountNumber): double
+    }
+
+    class TransactionService {
+        -accountRepository: AccountRepository
+        -transactionRepository: TransactionRepository
+        __
+        +TransactionService()
+        +deposit(accountNumber, amount, description): boolean
+        +withdraw(accountNumber, amount, description): boolean
+        +transfer(fromAccountNumber, toAccountNumber, amount, description): boolean
+        +getTransactionHistory(accountNumber): List<Transaction>
+        +getRecentTransactions(accountNumber, count): List<Transaction>
+    }
+
+    class BankService {
+        -authService: AuthService
+        -accountService: AccountService
+        -transactionService: TransactionService
+        __
+        +BankService()
+        +getAuthService(): AuthService
+        +getAccountService(): AccountService
+        +getTransactionService(): TransactionService
+        +getSystemStats(): String
+    }
+}
+
+package "controllers" {
+    class AuthController {
+        -authService: AuthService
+        __
+        +AuthController(authService)
+        +handleRegistration(): User
+        +handleLogin(): User
+    }
+
+    class AccountController {
+        -accountService: AccountService
+        -transactionService: TransactionService
+        __
+        +AccountController(accountService, transactionService)
+        +displayUserAccounts(user): void
+        +handleOpenCheckingAccount(user): CheckingAccount
+        +handleOpenSavingsAccount(user): SavingsAccount
+        +selectAccount(user): Account
+        +displayAccountDetails(account): void
+    }
+
+    class TransactionController {
+        -transactionService: TransactionService
+        __
+        +TransactionController(transactionService)
+        +handleDeposit(account): boolean
+        +handleWithdraw(account): boolean
+        +handleTransfer(fromAccount, user): boolean
+        +displayTransactionHistory(account): void
+        +displayTransactionDetails(transaction): void
+    }
+}
+
+package "data" {
+    class InMemoryDataStore {
+        -{static}instance: InMemoryDataStore
+        -userRepository: UserRepository
+        -accountRepository: AccountRepository
+        -transactionRepository: TransactionRepository
+        __
+        -{static}getInstance(): InMemoryDataStore
+        +getUserRepository(): UserRepository
+        +getAccountRepository(): AccountRepository
+        +getTransactionRepository(): TransactionRepository
+        +clearAll(): void
+    }
+
+    class UserRepository {
+        -users: Map<String, User>
+        __
+        +UserRepository()
+        +save(user): boolean
+        +findById(userId): User
+        +findByUsername(username): User
+        +update(user): boolean
+        +delete(userId): boolean
+        +usernameExists(username): boolean
+    }
+
+    class AccountRepository {
+        -accounts: Map<String, Account>
+        __
+        +AccountRepository()
+        +save(account): boolean
+        +findByAccountNumber(accountNumber): Account
+        +update(account): boolean
+        +delete(accountNumber): boolean
+        +exists(accountNumber): boolean
+    }
+
+    class TransactionRepository {
+        -accountTransactions: Map<String, List<Transaction>>
+        -allTransactions: List<Transaction>
+        __
+        +TransactionRepository()
+        +saveTransaction(accountNumber, transaction): boolean
+        +getTransactionsByAccount(accountNumber): List<Transaction>
+        +getRecentTransactions(accountNumber, count): List<Transaction>
+        +findById(transactionId): Transaction
+    }
+
+    InMemoryDataStore --> UserRepository
+    InMemoryDataStore --> AccountRepository
+    InMemoryDataStore --> TransactionRepository
+}
+
+package "utils" {
+    class PasswordHasher {
+        +{static}hashPassword(password): String
+        +{static}verifyPassword(plainPassword, hashedPassword): boolean
+    }
+
+    class InputValidator {
+        +{static}isValidUsername(username): boolean
+        +{static}isValidPassword(password): boolean
+        +{static}isValidEmail(email): boolean
+        +{static}isValidFullName(fullName): boolean
+        +{static}isValidAmount(amount): boolean
+        +{static}parseAmount(amountStr): double
+        +{static}isValidAccountNumber(accountNumber): boolean
+        +{static}isNullOrEmpty(str): boolean
+    }
+
+    class IDGenerator {
+        +{static}generateUserId(): String
+        +{static}generateAccountNumber(): String
+        +{static}generateTransactionId(): String
+    }
+
+    class ConsoleUtils {
+        +{static}printHeader(message): void
+        +{static}printSuccess(message): void
+        +{static}printError(message): void
+        +{static}readString(prompt): String
+        +{static}readDouble(prompt): double
+        +{static}readInt(prompt): int
+        +{static}readMenuChoice(options): int
+        +{static}formatAmount(amount): String
+    }
+}
+
+AuthService --> UserRepository
+AccountService --> AccountRepository
+TransactionService --> AccountRepository
+TransactionService --> TransactionRepository
+
+AuthController --> AuthService
+AccountController --> AccountService
+TransactionController --> TransactionService
+
+note right of CheckingAccount
+  Concrete implementation
+  of Account for checking
+  accounts with overdraft
+end note
+
+note right of SavingsAccount
+  Concrete implementation
+  of Account for savings
+  accounts with interest
+end note
+
+note right of InMemoryDataStore
+  Singleton pattern
+  manages all repositories
+end note
+
+@enduml

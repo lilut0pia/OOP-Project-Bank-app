@@ -1,0 +1,59 @@
+@startuml SequenceDiagram_OpenSavingsAccount
+!theme plain
+
+actor User
+participant "BankApplication" as App
+participant "AccountController" as AcctCtrl
+participant "AccountService" as AcctSvc
+participant "IDGenerator" as IDGen
+participant "SavingsAccount" as SavingsAcct
+participant "AccountRepository" as AcctRepo
+participant "User" as UserModel
+
+User -> App: Select Open Savings Account
+activate App
+App -> AcctCtrl: handleOpenSavingsAccount(user)
+activate AcctCtrl
+
+AcctCtrl -> User: Display form prompt
+User -> AcctCtrl: Enter initial balance & interest rate
+
+AcctCtrl -> AcctCtrl: Validate inputs
+alt Inputs valid
+    AcctCtrl -> AcctSvc: createSavingsAccount(user, initialBalance, interestRate)
+    activate AcctSvc
+    
+    AcctSvc -> IDGen: generateAccountNumber()
+    activate IDGen
+    IDGen --> AcctSvc: accountNumber
+    deactivate IDGen
+    
+    AcctSvc -> SavingsAcct: new SavingsAccount(accountNumber, initialBalance, interestRate)
+    activate SavingsAcct
+    SavingsAcct -> SavingsAcct: Initialize account fields
+    deactivate SavingsAcct
+    
+    AcctSvc -> AcctRepo: save(savingsAccount)
+    activate AcctRepo
+    AcctRepo --> AcctSvc: true
+    deactivate AcctRepo
+    
+    AcctSvc -> UserModel: addAccount(savingsAccount)
+    activate UserModel
+    UserModel -> UserModel: Add account to user's account list
+    UserModel --> AcctSvc: true
+    deactivate UserModel
+    
+    AcctSvc --> App: SavingsAccount object
+    deactivate AcctSvc
+    
+    AcctCtrl -> User: Display success message
+    AcctCtrl -> User: Display account number & details
+else Inputs invalid
+    AcctCtrl -> User: Display validation error
+end
+
+deactivate AcctCtrl
+deactivate App
+
+@enduml

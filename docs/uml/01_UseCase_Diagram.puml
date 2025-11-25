@@ -1,0 +1,55 @@
+@startuml UseCase_BankApp
+!define ABSTRACTBACKGROUNDCOLOR #D3D3D3
+
+actor User
+actor Admin
+
+rectangle "BankApp System" {
+    usecase "Register" as Register
+    usecase "Login" as Login
+    usecase "Open Checking Account" as OpenChecking
+    usecase "Open Savings Account" as OpenSavings
+    usecase "Deposit Money" as Deposit
+    usecase "Withdraw Money" as Withdraw
+    usecase "Transfer Money" as Transfer
+    usecase "View Transaction History" as ViewHistory
+    usecase "View Account Details" as ViewDetails
+    usecase "Apply Interest" as ApplyInterest
+    usecase "View All Users" as ViewUsers
+    usecase "Manage Accounts" as ManageAccounts
+}
+
+User --> Register
+User --> Login
+User --> OpenChecking
+User --> OpenSavings
+User --> Deposit
+User --> Withdraw
+User --> Transfer
+User --> ViewHistory
+User --> ViewDetails
+
+Admin --> ViewUsers
+Admin --> ManageAccounts
+
+Login --> OpenChecking : requires
+Login --> OpenSavings : requires
+Login --> Deposit : requires
+Login --> Withdraw : requires
+Login --> Transfer : requires
+Login --> ViewHistory : requires
+Login --> ViewDetails : requires
+
+ApplyInterest ..> OpenSavings : affects
+
+note right of Deposit
+  User can deposit money
+  into their account
+end note
+
+note right of Transfer
+  User can transfer money
+  to another account
+end note
+
+@enduml

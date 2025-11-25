@@ -1,0 +1,53 @@
+@startuml SequenceDiagram_Login
+!theme plain
+
+actor User
+participant "BankApplication" as App
+participant "AuthController" as AuthCtrl
+participant "AuthService" as AuthSvc
+participant "UserRepository" as UserRepo
+participant "PasswordHasher" as Hasher
+
+User -> App: Click Login
+activate App
+App -> AuthCtrl: handleLogin()
+activate AuthCtrl
+
+AuthCtrl -> User: Display login prompt
+User -> AuthCtrl: Enter username & password
+
+AuthCtrl -> AuthSvc: login(username, password)
+activate AuthSvc
+
+AuthSvc -> UserRepo: findByUsername(username)
+activate UserRepo
+UserRepo --> AuthSvc: User object
+deactivate UserRepo
+
+alt User found
+    AuthSvc -> Hasher: verifyPassword(password, passwordHash)
+    activate Hasher
+    Hasher --> AuthSvc: boolean (match/no match)
+    deactivate Hasher
+    
+    alt Password matches
+        AuthSvc --> App: User object
+        deactivate AuthSvc
+        AuthCtrl -> User: Display success message
+        App -> App: currentUser = user
+        App -> User: Show main menu
+    else Password mismatch
+        AuthSvc --> App: null
+        deactivate AuthSvc
+        AuthCtrl -> User: Display error message
+    end
+else User not found
+    AuthSvc --> App: null
+    deactivate AuthSvc
+    AuthCtrl -> User: Display error message
+end
+
+deactivate AuthCtrl
+deactivate App
+
+@enduml

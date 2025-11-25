@@ -1,0 +1,84 @@
+@startuml SequenceDiagram_Transfer
+!theme plain
+
+actor User
+participant "BankApplication" as App
+participant "TransactionController" as TxnCtrl
+participant "TransactionService" as TxnSvc
+participant "AccountRepository" as AcctRepo
+participant "FromAccount" as FromAcct
+participant "ToAccount" as ToAcct
+
+User -> App: Select Transfer
+activate App
+App -> TxnCtrl: handleTransfer(fromAccount, user)
+activate TxnCtrl
+
+TxnCtrl -> User: Display transfer prompt
+User -> TxnCtrl: Enter recipient account & amount
+
+TxnCtrl -> TxnCtrl: Validate inputs
+alt Inputs valid
+    TxnCtrl -> TxnSvc: transfer(fromAccountNumber, toAccountNumber, amount, description)
+    activate TxnSvc
+    
+    TxnSvc -> AcctRepo: findByAccountNumber(fromAccountNumber)
+    activate AcctRepo
+    AcctRepo --> TxnSvc: FromAccount object
+    deactivate AcctRepo
+    
+    TxnSvc -> AcctRepo: findByAccountNumber(toAccountNumber)
+    activate AcctRepo
+    AcctRepo --> TxnSvc: ToAccount object
+    deactivate AcctRepo
+    
+    alt Both accounts valid and active
+        TxnSvc -> FromAcct: canWithdraw(amount)
+        activate FromAcct
+        FromAcct --> TxnSvc: boolean
+        deactivate FromAcct
+        
+        alt Can withdraw
+            TxnSvc -> FromAcct: transfer(amount, toAccountNumber)
+            activate FromAcct
+            FromAcct -> FromAcct: Deduct amount from balance
+            FromAcct -> FromAcct: Create TRANSFER_OUT transaction
+            FromAcct --> TxnSvc: true
+            deactivate FromAcct
+            
+            TxnSvc -> ToAcct: receiveTransfer(amount, fromAccountNumber)
+            activate ToAcct
+            ToAcct -> ToAcct: Add amount to balance
+            ToAcct -> ToAcct: Create TRANSFER_IN transaction
+            deactivate ToAcct
+            
+            TxnSvc -> AcctRepo: update(fromAccount)
+            activate AcctRepo
+            deactivate AcctRepo
+            
+            TxnSvc -> AcctRepo: update(toAccount)
+            activate AcctRepo
+            deactivate AcctRepo
+            
+            TxnSvc --> App: true
+            deactivate TxnSvc
+            
+            TxnCtrl -> User: Display success & new balance
+        else Cannot withdraw
+            TxnSvc --> App: false
+            deactivate TxnSvc
+            TxnCtrl -> User: Display restriction error
+        end
+    else Account invalid
+        TxnSvc --> App: false
+        deactivate TxnSvc
+        TxnCtrl -> User: Display account error
+    end
+else Inputs invalid
+    TxnCtrl -> User: Display validation error
+end
+
+deactivate TxnCtrl
+deactivate App
+
+@enduml

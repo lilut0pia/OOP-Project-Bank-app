@@ -1,0 +1,59 @@
+@startuml SequenceDiagram_Deposit
+!theme plain
+
+actor User
+participant "BankApplication" as App
+participant "TransactionController" as TxnCtrl
+participant "TransactionService" as TxnSvc
+participant "AccountRepository" as AcctRepo
+participant "Account" as Acct
+
+User -> App: Select Deposit
+activate App
+App -> TxnCtrl: handleDeposit(account)
+activate TxnCtrl
+
+TxnCtrl -> User: Display deposit prompt
+User -> TxnCtrl: Enter amount & description
+
+TxnCtrl -> TxnCtrl: Validate amount
+alt Amount valid
+    TxnCtrl -> TxnSvc: deposit(accountNumber, amount, description)
+    activate TxnSvc
+    
+    TxnSvc -> AcctRepo: findByAccountNumber(accountNumber)
+    activate AcctRepo
+    AcctRepo --> TxnSvc: Account object
+    deactivate AcctRepo
+    
+    alt Account found and active
+        TxnSvc -> Acct: deposit(amount, description)
+        activate Acct
+        Acct -> Acct: Create Transaction object
+        Acct -> Acct: Add transaction to list
+        Acct -> Acct: Update balance
+        Acct --> TxnSvc: true
+        deactivate Acct
+        
+        TxnSvc -> AcctRepo: update(account)
+        activate AcctRepo
+        deactivate AcctRepo
+        
+        TxnSvc --> App: true
+        deactivate TxnSvc
+        
+        TxnCtrl -> User: Display success & new balance
+        App -> User: Show main menu
+    else Account not found or inactive
+        TxnSvc --> App: false
+        deactivate TxnSvc
+        TxnCtrl -> User: Display error message
+    end
+else Amount invalid
+    TxnCtrl -> User: Display validation error
+end
+
+deactivate TxnCtrl
+deactivate App
+
+@enduml
