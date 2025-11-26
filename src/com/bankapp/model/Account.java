@@ -5,33 +5,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Abstract base class for all account types.
- * Implements Abstraction principle - defines common interface for all accounts.
- * Uses Encapsulation - hides internal implementation details.
+ * Lớp trừu tượng Account - Lớp cơ sở cho tất cả các loại tài khoản.
+ * Định nghĩa các thuộc tính và hành vi chung.
  */
 public abstract class Account implements Serializable {
+    // ID duy nhất cho việc serialization, giúp đảm bảo tương thích phiên bản
     private static final long serialVersionUID = 1L;
+
+    protected User owner;
     protected String accountNumber;
+    protected String accountHolderName; // Thêm lại trường này
     protected double balance;
-    protected long createdAt;
-    protected List<Transaction> transactions;
     protected boolean isActive;
+    protected List<Transaction> transactions;
 
-    /**
-     * Constructor for Account.
-     *
-     * @param accountNumber Unique account identifier
-     * @param initialBalance Initial account balance
-     */
-    public Account(String accountNumber, double initialBalance) {
+    public Account(User owner, String accountNumber, double balance) {
+        if (owner == null) {
+            throw new IllegalArgumentException("Account must have an owner.");
+        }
+        this.owner = owner;
         this.accountNumber = accountNumber;
-        this.balance = initialBalance;
-        this.createdAt = System.currentTimeMillis();
-        this.transactions = new ArrayList<>();
+        this.accountHolderName = owner.getFullName();
+        this.balance = balance;
         this.isActive = true;
+        this.transactions = new ArrayList<>();
     }
-
-    // ============= Getters =============
 
     public String getAccountNumber() {
         return accountNumber;
@@ -41,164 +39,128 @@ public abstract class Account implements Serializable {
         return balance;
     }
 
-    public long getCreatedAt() {
-        return createdAt;
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
     }
 
     public List<Transaction> getTransactions() {
         return new ArrayList<>(transactions);
     }
 
-    public boolean isActive() {
-        return isActive;
-    }
-
-    // ============= Abstract Methods =============
-
-    /**
-     * Abstract method to get account type.
-     * Implements Polymorphism - different implementations in subclasses.
-     *
-     * @return Account type as string
-     */
-    public abstract String getAccountType();
-
-    /**
-     * Abstract method to check withdrawal eligibility.
-     * Different account types may have different withdrawal rules.
-     *
-     * @param amount Amount to withdraw
-     * @return true if withdrawal is allowed, false otherwise
-     */
-    public abstract boolean canWithdraw(double amount);
-
-    /**
-     * Abstract method to apply account-specific rules.
-     * E.g., SavingsAccount may apply interest penalties.
-     */
-    public abstract void applyAccountSpecificRules();
-
-    // ============= Transaction Methods =============
-
-    /**
-     * Deposits money into the account.
-     *
-     * @param amount  Amount to deposit
-     * @param description Description of the deposit
-     * @return true if deposit was successful, false otherwise
-     */
-    public boolean deposit(double amount, String description) {
-        if (amount <= 0) {
-            return false;
-        }
-        this.balance += amount;
-        Transaction transaction = new Transaction(
-                "DEP-" + System.nanoTime(),
-                this.accountNumber,
-                null,
-                amount,
-                "DEPOSIT",
-                description
-        );
-        this.transactions.add(transaction);
-        return true;
+    public User getOwner() {
+        return owner;
     }
 
     /**
-     * Withdraws money from the account.
-     *
-     * @param amount  Amount to withdraw
-     * @param description Description of the withdrawal
-     * @return true if withdrawal was successful, false otherwise
-     */
-    public boolean withdraw(double amount, String description) {
-        if (amount <= 0 || !canWithdraw(amount) || this.balance < amount) {
-            return false;
-        }
-        this.balance -= amount;
-        Transaction transaction = new Transaction(
-                "WTH-" + System.nanoTime(),
-                this.accountNumber,
-                null,
-                amount,
-                "WITHDRAWAL",
-                description
-        );
-        this.transactions.add(transaction);
-        applyAccountSpecificRules();
-        return true;
-    }
-
-    /**
-     * Records a transfer out (sending money to another account).
-     *
-     * @param amount  Amount to transfer
-     * @param toAccountNumber Recipient account number
-     * @return true if transfer was recorded, false otherwise
-     */
-    public boolean transfer(double amount, String toAccountNumber) {
-        if (amount <= 0 || !canWithdraw(amount) || this.balance < amount) {
-            return false;
-        }
-        this.balance -= amount;
-        Transaction transaction = new Transaction(
-                "TRF-" + System.nanoTime(),
-                this.accountNumber,
-                toAccountNumber,
-                amount,
-                "TRANSFER_OUT",
-                "Transfer to " + toAccountNumber
-        );
-        this.transactions.add(transaction);
-        applyAccountSpecificRules();
-        return true;
-    }
-
-    /**
-     * Records a transfer in (receiving money from another account).
-     *
-     * @param amount  Amount received
-     * @param fromAccountNumber Sender account number
-     */
-    public void receiveTransfer(double amount, String fromAccountNumber) {
-        this.balance += amount;
-        Transaction transaction = new Transaction(
-                "TRF-" + System.nanoTime(),
-                this.accountNumber,
-                fromAccountNumber,
-                amount,
-                "TRANSFER_IN",
-                "Transfer from " + fromAccountNumber
-        );
-        this.transactions.add(transaction);
-    }
-
-    /**
-     * Closes the account (sets it to inactive).
+     * Đóng tài khoản bằng cách đặt nó thành không hoạt động.
+     * Trong tương lai, có thể thêm logic kiểm tra số dư trước khi đóng.
      */
     public void closeAccount() {
         this.isActive = false;
     }
 
     /**
-     * Gets recent transactions (last n transactions).
-     *
-     * @param count Number of recent transactions to retrieve
-     * @return List of recent transactions
+     * Nạp tiền vào tài khoản.
+     * @param amount Số tiền cần nạp
+     * @param description Mô tả giao dịch
+     * @return true nếu thành công
      */
+    public boolean deposit(double amount, String description) {
+        if (amount > 0) {
+            this.balance += amount;
+            Transaction txn = new Transaction(
+                "TXN-" + System.nanoTime(),
+                null, // fromAccountNumber
+                this.accountNumber, // toAccountNumber
+                amount, "DEPOSIT", description
+            );
+            this.transactions.add(txn);
+            return true;
+        } else {
+            System.out.println("Deposit amount must be greater than 0.");
+            return false;
+        }
+    }
+
+    /**
+     * Rút tiền từ tài khoản.
+     * @param amount Số tiền cần rút
+     * @return true nếu rút thành công, false nếu thất bại
+     */
+    public boolean withdraw(double amount, String description) {
+        if (amount <= 0 || !canWithdraw(amount)) {
+            System.out.println("Invalid transaction or insufficient funds.");
+            return false;
+        }
+        this.balance -= amount;
+        applyAccountSpecificRules(); // Áp dụng các quy tắc riêng
+        Transaction txn = new Transaction(
+            "TXN-" + System.nanoTime(),
+            this.accountNumber, // fromAccountNumber
+            null, // toAccountNumber
+            amount, "WITHDRAWAL", description
+        );
+        this.transactions.add(txn);
+        return true;
+    }
+
+    /**
+     * Thực hiện chuyển tiền từ tài khoản này.
+     * @param amount Số tiền
+     * @param toAccountNumber Tài khoản nhận
+     * @return true nếu thành công
+     */
+    public boolean transfer(double amount, String toAccountNumber) {
+        // Logic rút tiền được xử lý trong withdraw()
+        this.balance -= amount;
+        Transaction txn = new Transaction(
+            "TXN-" + System.nanoTime(),
+            this.accountNumber,
+            toAccountNumber,
+            amount, "TRANSFER_OUT", "Transfer to " + toAccountNumber
+        );
+        this.transactions.add(txn);
+        return true;
+    }
+
+    /**
+     * Nhận tiền chuyển khoản vào tài khoản này.
+     * @param amount Số tiền
+     * @param fromAccountNumber Tài khoản gửi
+     */
+    public void receiveTransfer(double amount, String fromAccountNumber) {
+        this.balance += amount;
+        Transaction txn = new Transaction(
+            "TXN-" + System.nanoTime(),
+            fromAccountNumber,
+            this.accountNumber,
+            amount, "TRANSFER_IN", "Transfer from " + fromAccountNumber
+        );
+        this.transactions.add(txn);
+    }
+
     public List<Transaction> getRecentTransactions(int count) {
         int size = transactions.size();
-        int startIndex = Math.max(0, size - count);
-        return new ArrayList<>(transactions.subList(startIndex, size));
+        if (size <= count) {
+            return new ArrayList<>(transactions);
+        }
+        return new ArrayList<>(transactions.subList(size - count, size));
     }
+
+    // ============= Phương thức trừu tượng =============
+
+    public abstract String getAccountType();
+
+    public abstract boolean canWithdraw(double amount);
+
+    public abstract void applyAccountSpecificRules();
 
     @Override
     public String toString() {
-        return getAccountType() + "{" +
-                "accountNumber='" + accountNumber + '\'' +
-                ", balance=" + balance +
-                ", isActive=" + isActive +
-                ", transactionCount=" + transactions.size() +
-                '}';
+        return "Account [Acc No=" + accountNumber + ", Holder=" + accountHolderName + ", Balance=" + balance + "]";
     }
 }

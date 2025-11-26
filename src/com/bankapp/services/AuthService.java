@@ -1,109 +1,74 @@
 package com.bankapp.services;
 
-import com.bankapp.data.InMemoryDataStore;
-import com.bankapp.data.UserRepository;
+import com.bankapp.service.Bank;
 import com.bankapp.model.User;
 import com.bankapp.utils.IDGenerator;
-import com.bankapp.utils.InputValidator;
 import com.bankapp.utils.PasswordHasher;
 
+import java.util.Optional;
+
 /**
- * AuthService - Handles user authentication and registration.
- * Implements the Single Responsibility Principle - focuses on auth operations only.
+ * AuthService - Manages user authentication logic like registration and login.
+ * It also holds the in-memory store of all users.
  */
 public class AuthService {
-    private final UserRepository userRepository;
 
-    /**
-     * Constructor - initializes with data store.
-     */
-    public AuthService() {
-        this.userRepository = InMemoryDataStore.getInstance().getUserRepository();
+    private Bank bank;
+
+    public AuthService(Bank bank) {
+        this.bank = bank;
     }
 
+    public void setBank(Bank bank) {
+        this.bank = bank;
+    }
+    
     /**
      * Registers a new user.
-     * Validates input and checks for duplicate usernames.
      *
-     * @param username User's username
-     * @param password User's password
-     * @param fullName User's full name
-     * @param email User's email
-     * @return User object if registration successful, null if failed
+     * @param username The username for the new user.
+     * @param password The plain text password for the new user.
+     * @param fullName The full name of the new user.
+     * @param email    The email address of the new user.
+     * @return The newly created User object, or null if the username already exists.
      */
     public User register(String username, String password, String fullName, String email) {
-        // Validate inputs
-        if (!InputValidator.isValidUsername(username)) {
-            return null;
+        // Check if username already exists in the bank
+        boolean usernameExists = bank.getAllUsers().stream()
+                .anyMatch(u -> u.getUsername().equals(username));
+        if (usernameExists) {
+            return null; // Username already exists
         }
-        if (!InputValidator.isValidPassword(password)) {
-            return null;
-        }
-        if (!InputValidator.isValidFullName(fullName)) {
-            return null;
-        }
-        if (!InputValidator.isValidEmail(email)) {
-            return null;
-        }
-
-        // Check for duplicate username
-        if (userRepository.usernameExists(username)) {
-            return null;
-        }
-
-        // Create new user with hashed password
         String userId = IDGenerator.generateUserId();
         String passwordHash = PasswordHasher.hashPassword(password);
         User newUser = new User(userId, username, passwordHash, fullName, email);
-
-        // Save user
-        if (userRepository.save(newUser)) {
-            return newUser;
-        }
-        return null;
+        bank.addUser(newUser);
+        return newUser;
     }
 
     /**
-     * Authenticates a user (login).
+     * Authenticates a user.
      *
-     * @param username User's username
-     * @param password User's password
-     * @return User object if login successful, null if failed
+     * @param username The username to log in with.
+     * @param password The plain text password.
+     * @return An Optional containing the User if login is successful, otherwise an empty Optional.
      */
-    public User login(String username, String password) {
-        if (InputValidator.isNullOrEmpty(username) || InputValidator.isNullOrEmpty(password)) {
-            return null;
-        }
-
-        User user = userRepository.findByUsername(username);
-        if (user == null) {
-            return null;
-        }
-
-        // Verify password
-        if (PasswordHasher.verifyPassword(password, user.getPasswordHash())) {
-            return user;
-        }
-        return null;
+    public Optional<User> login(String username, String password) {
+        return bank.getAllUsers().stream()
+                .filter(user -> user.getUsername().equals(username) && user.verifyPassword(PasswordHasher.hashPassword(password)))
+                .findFirst();
     }
 
     /**
-     * Finds a user by their ID.
+     * Retrieves a user by their unique user ID.
      *
-     * @param userId User ID to search for
-     * @return User object if found, null otherwise
+     * @param userId The ID of the user to find.
      */
-    public User getUserById(String userId) {
-        return userRepository.findById(userId);
-    }
-
-    /**
-     * Finds a user by their username.
-     *
-     * @param username Username to search for
-     * @return User object if found, null otherwise
-     */
-    public User getUserByUsername(String username) {
-        return userRepository.findByUsername(username);
+    public Optional<User> getUserById(String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        // Use the bank object to find the user by ID
+        return Optional.ofNullable(bank.findUserById(userId));
     }
 }

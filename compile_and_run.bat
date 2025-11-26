@@ -6,8 +6,8 @@ REM ========================================
 setlocal enabledelayedexpansion
 
 REM Set project directory
-set PROJECT_DIR=d:\Code\OOP\Project\BankApp
-
+REM %~dp0 is the directory of the batch file itself
+set "PROJECT_DIR=%~dp0"
 REM Change to project directory
 cd /d %PROJECT_DIR%
 
@@ -28,13 +28,7 @@ echo Compiling BankApp...
 echo ========================================
 echo.
 
-javac -d bin -sourcepath src ^
-    src\com\bankapp\BankApplication.java ^
-    src\com\bankapp\model\*.java ^
-    src\com\bankapp\services\*.java ^
-    src\com\bankapp\controllers\*.java ^
-    src\com\bankapp\data\*.java ^
-    src\com\bankapp\utils\*.java
+javac -d bin -sourcepath src src\com\bankapp\BankApplication.java
 
 REM Check compilation status
 if %ERRORLEVEL% EQU 0 (
@@ -44,11 +38,11 @@ if %ERRORLEVEL% EQU 0 (
     echo ========================================
     echo.
     echo Starting BankApp...
-    echo ========================================
-    echo.
     
     REM Run the application
     java -cp bin com.bankapp.BankApplication
+    echo.
+    pause
 ) else (
     echo.
     echo ========================================

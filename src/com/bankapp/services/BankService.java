@@ -1,5 +1,6 @@
 package com.bankapp.services;
 
+import com.bankapp.service.Bank;
 import com.bankapp.model.SavingsAccount;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.Map;
  * Implements the Facade Pattern to simplify client interactions.
  */
 public class BankService {
+    private final Bank bank;
     private final AuthService authService;
     private final AccountService accountService;
     private final TransactionService transactionService;
@@ -18,10 +20,11 @@ public class BankService {
     /**
      * Constructor - initializes all sub-services.
      */
-    public BankService() {
-        this.authService = new AuthService();
-        this.accountService = new AccountService();
-        this.transactionService = new TransactionService();
+    public BankService(Bank bank) {
+        this.bank = bank;
+        this.authService = new AuthService(bank);
+        this.accountService = new AccountService(bank); // Cập nhật AccountService
+        this.transactionService = new TransactionService(bank);
         this.interestRates = new HashMap<>();
     }
 
@@ -59,10 +62,15 @@ public class BankService {
      */
     public String getSystemStats() {
         StringBuilder stats = new StringBuilder();
+        // Lấy dữ liệu trực tiếp từ đối tượng Bank
+        int totalUsers = bank.getAllUsers().size();
+        long totalAccounts = bank.getAllUsers().stream()
+                .mapToLong(user -> user.getAccounts().size())
+                .sum();
+
         stats.append("=== BANK SYSTEM STATISTICS ===\n");
-        stats.append(String.format("Total Users: %d%n",
-                authService.getUserById("USER_001") != null ? "N/A" : 0));
-        stats.append(String.format("Total Accounts: %d%n", accountService.accountExists("ACC_001") ? "N/A" : 0));
+        stats.append(String.format("Total Users: %d%n", totalUsers));
+        stats.append(String.format("Total Accounts: %d%n", totalAccounts));
         return stats.toString();
     }
 }

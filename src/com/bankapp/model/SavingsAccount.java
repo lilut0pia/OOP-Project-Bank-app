@@ -5,9 +5,10 @@ package com.bankapp.model;
  * Represents a savings account with withdrawal restrictions and interest rates.
  * Demonstrates Inheritance and Polymorphism.
  */
-public class SavingsAccount extends Account {
+public class SavingsAccount extends Account { // Lỗi: SavingsAccount không có constructor phù hợp
     private static final long serialVersionUID = 1L;
     private static final double MINIMUM_BALANCE = 100.0;
+    private static final double MAX_INTEREST_RATE = 0.05; // Giới hạn lãi suất tối đa là 1%
     private double interestRate; // Annual interest rate (e.g., 0.03 for 3%)
     private int withdrawalsThisMonth;
     private static final int MAX_MONTHLY_WITHDRAWALS = 6; // Federal regulation example
@@ -16,25 +17,31 @@ public class SavingsAccount extends Account {
     /**
      * Constructor for SavingsAccount.
      *
+     * @param owner           The user who owns this account
      * @param accountNumber   Unique account identifier
      * @param initialBalance  Initial account balance
      * @param interestRate    Annual interest rate (as decimal, e.g., 0.03 for 3%)
      */
-    public SavingsAccount(String accountNumber, double initialBalance, double interestRate) {
-        super(accountNumber, initialBalance);
+    public SavingsAccount(User owner, String accountNumber, double initialBalance, double interestRate) {
+        super(owner, accountNumber, initialBalance);
+        // Validate and set interest rate directly in the constructor
+        if (interestRate < 0 || interestRate > MAX_INTEREST_RATE) {
+            throw new IllegalArgumentException("Invalid interest rate. The rate must be between 0 and " + (MAX_INTEREST_RATE * 100) + "%.");
+        }
         this.interestRate = interestRate;
         this.withdrawalsThisMonth = 0;
         this.withdrawalPenalty = 25.0; // Default penalty
     }
 
     /**
-     * Constructor with default interest rate.
+     * Constructor with default interest rate and penalty.
      *
+     * @param owner           The user who owns this account
      * @param accountNumber   Unique account identifier
      * @param initialBalance  Initial account balance
      */
-    public SavingsAccount(String accountNumber, double initialBalance) {
-        this(accountNumber, initialBalance, 0.025); // Default 2.5% interest
+    public SavingsAccount(User owner, String accountNumber, double initialBalance) {
+        this(owner, accountNumber, initialBalance, 0.025); // Default 2.5% interest
     }
 
     // ============= Getters and Setters =============
@@ -44,8 +51,10 @@ public class SavingsAccount extends Account {
     }
 
     public void setInterestRate(double interestRate) {
-        if (interestRate >= 0) {
+        if (interestRate >= 0 && interestRate <= MAX_INTEREST_RATE) {
             this.interestRate = interestRate;
+        } else {
+            throw new IllegalArgumentException("Invalid interest rate. The rate must be between 0 and " + (MAX_INTEREST_RATE * 100) + "%.");
         }
     }
 

@@ -1,8 +1,6 @@
 package com.bankapp.services;
 
-import com.bankapp.data.InMemoryDataStore;
-import com.bankapp.data.AccountRepository;
-import com.bankapp.data.TransactionRepository;
+import com.bankapp.service.Bank;
 import com.bankapp.model.Account;
 import com.bankapp.model.Transaction;
 import java.util.List;
@@ -12,15 +10,16 @@ import java.util.List;
  * Implements the Single Responsibility Principle - focuses on transaction logic.
  */
 public class TransactionService {
-    private final AccountRepository accountRepository;
-    private final TransactionRepository transactionRepository;
+    private Bank bank;
 
     /**
      * Constructor - initializes with data store.
      */
-    public TransactionService() {
-        this.accountRepository = InMemoryDataStore.getInstance().getAccountRepository();
-        this.transactionRepository = InMemoryDataStore.getInstance().getTransactionRepository();
+    public TransactionService(Bank bank) {
+        this.bank = bank;
+    }
+    public void setBank(Bank bank) {
+        this.bank = bank;
     }
 
     /**
@@ -36,14 +35,12 @@ public class TransactionService {
             return false;
         }
 
-        Account account = accountRepository.findByAccountNumber(accountNumber);
+        Account account = findAccountByNumber(accountNumber);
         if (account == null || !account.isActive()) {
             return false;
         }
 
         if (account.deposit(amount, description)) {
-            accountRepository.update(account);
-            // Record transaction (the account already created the transaction internally)
             return true;
         }
         return false;
@@ -62,13 +59,12 @@ public class TransactionService {
             return false;
         }
 
-        Account account = accountRepository.findByAccountNumber(accountNumber);
+        Account account = findAccountByNumber(accountNumber);
         if (account == null || !account.isActive()) {
             return false;
         }
 
         if (account.withdraw(amount, description)) {
-            accountRepository.update(account);
             return true;
         }
         return false;
@@ -89,8 +85,8 @@ public class TransactionService {
         }
 
         // Validate accounts
-        Account fromAccount = accountRepository.findByAccountNumber(fromAccountNumber);
-        Account toAccount = accountRepository.findByAccountNumber(toAccountNumber);
+        Account fromAccount = findAccountByNumber(fromAccountNumber);
+        Account toAccount = findAccountByNumber(toAccountNumber);
 
         if (fromAccount == null || toAccount == null ||
                 !fromAccount.isActive() || !toAccount.isActive()) {
@@ -106,9 +102,6 @@ public class TransactionService {
         if (fromAccount.transfer(amount, toAccountNumber)) {
             toAccount.receiveTransfer(amount, fromAccountNumber);
 
-            // Update both accounts
-            accountRepository.update(fromAccount);
-            accountRepository.update(toAccount);
             return true;
         }
         return false;
@@ -121,7 +114,7 @@ public class TransactionService {
      * @return List of transactions
      */
     public List<Transaction> getTransactionHistory(String accountNumber) {
-        Account account = accountRepository.findByAccountNumber(accountNumber);
+        Account account = findAccountByNumber(accountNumber);
         if (account != null) {
             return account.getTransactions();
         }
@@ -136,7 +129,7 @@ public class TransactionService {
      * @return List of recent transactions
      */
     public List<Transaction> getRecentTransactions(String accountNumber, int count) {
-        Account account = accountRepository.findByAccountNumber(accountNumber);
+        Account account = findAccountByNumber(accountNumber);
         if (account != null) {
             return account.getRecentTransactions(count);
         }
@@ -144,12 +137,14 @@ public class TransactionService {
     }
 
     /**
-     * Gets a specific transaction by ID.
-     *
-     * @param transactionId Transaction ID to search for
-     * @return Transaction object if found, null otherwise
+     * Helper method to find an account across all users in the bank.
+     * @param accountNumber The account number to find.
+     * @return The Account object if found, otherwise null.
      */
-    public Transaction getTransaction(String transactionId) {
-        return transactionRepository.findById(transactionId);
+    private Account findAccountByNumber(String accountNumber) {
+        return bank.getAllAccounts().stream()
+                .filter(acc -> acc.getAccountNumber().equals(accountNumber))
+                .findFirst()
+                .orElse(null);
     }
 }

@@ -1,8 +1,6 @@
 package com.bankapp.services;
 
-import com.bankapp.data.InMemoryDataStore;
-import com.bankapp.data.AccountRepository;
-import com.bankapp.model.Account;
+import com.bankapp.service.Bank;
 import com.bankapp.model.User;
 import com.bankapp.model.CheckingAccount;
 import com.bankapp.model.SavingsAccount;
@@ -13,13 +11,13 @@ import com.bankapp.utils.IDGenerator;
  * Implements the Single Responsibility Principle - focuses on account management.
  */
 public class AccountService {
-    private final AccountRepository accountRepository;
+    private final Bank bank;
 
     /**
      * Constructor - initializes with data store.
      */
-    public AccountService() {
-        this.accountRepository = InMemoryDataStore.getInstance().getAccountRepository();
+    public AccountService(Bank bank) {
+        this.bank = bank;
     }
 
     /**
@@ -36,14 +34,10 @@ public class AccountService {
         }
 
         String accountNumber = IDGenerator.generateAccountNumber();
-        CheckingAccount account = new CheckingAccount(accountNumber, initialBalance, overdraftLimit);
-
-        // Save account to repository
-        if (accountRepository.save(account)) {
-            // Add account to user
-            if (user.addAccount(account)) {
-                return account;
-            }
+        CheckingAccount account = new CheckingAccount(user, accountNumber, initialBalance, overdraftLimit);
+        // Add account to user
+        if (user.addAccount(account)) {
+            return account;
         }
         return null;
     }
@@ -61,74 +55,17 @@ public class AccountService {
             return null;
         }
 
-        String accountNumber = IDGenerator.generateAccountNumber();
-        SavingsAccount account = new SavingsAccount(accountNumber, initialBalance, interestRate);
-
-        // Save account to repository
-        if (accountRepository.save(account)) {
+        try {
+            String accountNumber = IDGenerator.generateAccountNumber();
+            SavingsAccount account = new SavingsAccount(user, accountNumber, initialBalance, interestRate);
             // Add account to user
             if (user.addAccount(account)) {
                 return account;
             }
+        } catch (IllegalArgumentException e) {
+            // The exception from the SavingsAccount constructor is caught here.
+            System.out.println("Error: " + e.getMessage());
         }
         return null;
-    }
-
-    /**
-     * Retrieves an account by its account number.
-     *
-     * @param accountNumber Account number to search for
-     * @return Account object if found, null otherwise
-     */
-    public Account getAccount(String accountNumber) {
-        return accountRepository.findByAccountNumber(accountNumber);
-    }
-
-    /**
-     * Closes an account.
-     *
-     * @param accountNumber Account number to close
-     * @return true if account was closed, false otherwise
-     */
-    public boolean closeAccount(String accountNumber) {
-        Account account = accountRepository.findByAccountNumber(accountNumber);
-        if (account != null) {
-            account.closeAccount();
-            accountRepository.update(account);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Checks if an account exists.
-     *
-     * @param accountNumber Account number to check
-     * @return true if account exists, false otherwise
-     */
-    public boolean accountExists(String accountNumber) {
-        return accountRepository.exists(accountNumber);
-    }
-
-    /**
-     * Gets account balance.
-     *
-     * @param accountNumber Account number
-     * @return Account balance, or -1 if account not found
-     */
-    public double getAccountBalance(String accountNumber) {
-        Account account = getAccount(accountNumber);
-        return account != null ? account.getBalance() : -1;
-    }
-
-    /**
-     * Gets account type.
-     *
-     * @param accountNumber Account number
-     * @return Account type (CHECKING, SAVINGS), or null if not found
-     */
-    public String getAccountType(String accountNumber) {
-        Account account = getAccount(accountNumber);
-        return account != null ? account.getAccountType() : null;
     }
 }

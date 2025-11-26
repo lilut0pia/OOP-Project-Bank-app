@@ -15,25 +15,27 @@ public class CheckingAccount extends Account {
     /**
      * Constructor for CheckingAccount.
      *
+     * @param owner            The user who owns this account
      * @param accountNumber    Unique account identifier
      * @param initialBalance   Initial account balance
      * @param overdraftLimit   Maximum overdraft amount allowed
      */
-    public CheckingAccount(String accountNumber, double initialBalance, double overdraftLimit) {
-        super(accountNumber, initialBalance);
+    public CheckingAccount(User owner, String accountNumber, double initialBalance, double overdraftLimit) {
+        super(owner, accountNumber, initialBalance);
         this.overdraftLimit = overdraftLimit;
         this.monthlyWithdrawals = 0;
         this.maxMonthlyWithdrawals = Integer.MAX_VALUE; // Unlimited by default
     }
 
     /**
-     * Constructor without overdraft limit.
+     * Constructor with default overdraft limit.
      *
+     * @param owner           The user who owns this account
      * @param accountNumber   Unique account identifier
      * @param initialBalance  Initial account balance
      */
-    public CheckingAccount(String accountNumber, double initialBalance) {
-        this(accountNumber, initialBalance, 0.0);
+    public CheckingAccount(User owner, String accountNumber, double initialBalance) {
+        this(owner, accountNumber, initialBalance, 0.0);
     }
 
     // ============= Getters and Setters =============

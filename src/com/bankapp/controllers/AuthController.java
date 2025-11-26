@@ -3,6 +3,7 @@ package com.bankapp.controllers;
 import com.bankapp.model.User;
 import com.bankapp.services.AuthService;
 import com.bankapp.utils.ConsoleUtils;
+import java.util.Optional;
 import com.bankapp.utils.InputValidator;
 
 /**
@@ -92,10 +93,11 @@ public class AuthController {
         }
 
         // Attempt login
-        User user = authService.login(username, password);
-        if (user != null) {
-            ConsoleUtils.printSuccess("Login successful! Welcome, " + user.getFullName());
-            return user;
+        Optional<User> userOptional = authService.login(username, password);
+        if (userOptional.isPresent()) {
+            User loggedInUser = userOptional.get();
+            ConsoleUtils.printSuccess("Login successful! Welcome, " + loggedInUser.getFullName());
+            return loggedInUser;
         } else {
             ConsoleUtils.printError("Invalid username or password");
             return null;

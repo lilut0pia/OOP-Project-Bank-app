@@ -78,6 +78,16 @@ public class User implements Serializable {
     // ============= Account Management =============
 
     /**
+     * Verifies the provided hashed password.
+     * In a real application, this would involve comparing hashes.
+     * @param passwordHash The hashed password to compare against.
+     * @return true if the password matches.
+     */
+    public boolean verifyPassword(String passwordHash) {
+        return this.passwordHash.equals(passwordHash);
+    }
+
+    /**
      * Adds an account to the user's account list.
      * Prevents duplicate accounts.
      *

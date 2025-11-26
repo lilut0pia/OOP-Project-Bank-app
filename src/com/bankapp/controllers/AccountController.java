@@ -21,7 +21,6 @@ public class AccountController {
     /**
      * Constructor - initializes with services.
      *
-     * @param accountService AccountService instance
      * @param transactionService TransactionService instance
      */
     public AccountController(AccountService accountService, TransactionService transactionService) {
